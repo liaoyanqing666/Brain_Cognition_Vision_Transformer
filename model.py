@@ -83,12 +83,11 @@ class MultiHeadAttention(nn.Module):
         return output, attn
 
 class FeedForward(nn.Module):
-    def __init__(self, dim, hidden_dim, dropout=0.):
+    def __init__(self, dim, hidden_dim, dropout=0., activation=nn.GELU()):
         super(FeedForward, self).__init__()
         self.net = nn.Sequential(
-            nn.LayerNorm(dim),
             nn.Linear(dim, hidden_dim),
-            nn.GELU(),
+            activation,
             nn.Dropout(dropout),
             nn.Linear(hidden_dim, dim),
             nn.Dropout(dropout)
