@@ -95,98 +95,37 @@ class FeedForward(nn.Module):
     def forward(self, x):
         return self.net(x)
 
-class Attention(nn.Module):
-    """Multi-head self-attention layer.
+class Transformer(nn.Module):
+    def __init__(self, dim, depth, heads, dim_head, mlp_dim, dropout = 0.):
+        """
+        Initialize the Transformer model.
 
-    Implements self-attention with multiple attention heads.
+        Args:
+            dim (int): The input dimension.
+            depth (int): The number of layers in the model.
+            heads (int): The number of attention heads.
+            dim_head (int): The dimension of the query and key vectors.
+            mlp_dim (int): The dimension of the feedforward network.
+            dropout (float, optional): The dropout rate. Defaults to 0.
 
-    Parameters
-    ----------
-    dim : int
-        Input dimension.
-    heads : int, optional
-        Number of attention heads, by default 8
-    dim_head : int, optional
-        Dimension of each attention head, by default 64
-    dropout : float, optional
-        Dropout rate, by default 0.
-    """
-
-    def __init__(self, dim, heads=8, dim_head=64, dropout=0.):
+        Returns:
+            None
+        """
         super().__init__()
-        inner_dim = dim_head * heads
-        project_out = not (heads == 1 and dim_head == dim)
-
-        self.heads = heads
-        self.scale = dim_head ** -0.5
-
-        # Layer normalization for the input
         self.norm = nn.LayerNorm(dim)
-
-        # Softmax activation for attention weights
-        self.attend = nn.Softmax(dim=-1)
-
-        # Dropout layer for attention weights
-        self.dropout = nn.Dropout(dropout)
-
-        # Linear layer to transform input to (heads * dim_head) features
-        self.to_qkv = nn.Linear(dim, inner_dim * 3, bias=False)
-
-        # Projection layer if number of heads is greater than 1 or dim_head is
-        # different from dim.
-        self.to_out = nn.Sequential(
-            nn.Linear(inner_dim, dim),
-            nn.Dropout(dropout)
-        ) if project_out else nn.Identity()
+        self.layers = nn.ModuleList([])
+        for _ in range(depth):
+            self.layers.append(nn.ModuleList([
+                MultiHeadAttention(dim, num_heads = heads, dim_qk = dim_head, dropout = dropout),
+                FeedForward(dim, mlp_dim, dropout = dropout)
+            ]))
 
     def forward(self, x):
-        """Forward pass.
+        for attn, ff in self.layers:
+            x = attn(x) + x
+            x = ff(x) + x
 
-        Parameters
-        ----------
-        x : torch.Tensor
-            Input tensor of shape (batch_size, sequence_length, dim)
-
-        Returns
-        -------
-        torch.Tensor
-            Output tensor of shape (batch_size, sequence_length, dim)
-        """
-
-        x = self.norm(x)
-
-        # Split the last dimension of `x` into 3 separate tensors of shape
-        # (batch_size, sequence_length, heads * dim_head)
-        qkv = self.to_qkv(x).chunk(3, dim=-1)
-
-        # Rearrange the dimensions of the query, key, and value tensors
-        # so that the head dimension is moved to the front.
-        # The resulting tensors have shape
-        # (batch_size, heads, sequence_length, dim_head)
-        q, k, v = map(
-            lambda t: t.rearrange('b n (h d) -> b h n d', h=self.heads), qkv
-        )
-
-        # Compute dot product attention
-        # The resulting tensor has shape (batch_size, heads, sequence_length, sequence_length)
-        dots = torch.matmul(q, k.transpose(-1, -2)) * self.scale
-
-        # Apply softmax to the attention weights
-        attn = self.attend(dots)
-
-        # Apply dropout to the attention weights
-        attn = self.dropout(attn)
-
-        # Compute the final output of the layer by multiplying the attention
-        # weights with the value tensor
-        out = torch.matmul(attn, v)
-
-        # Rearrange the dimensions of the output tensor so that the head
-        # dimension is moved to the end
-        out = rearrange(out, 'b h n d -> b n (h d)')
-
-        # Apply the final projection layer to the output
-        return self.to_out(out)
+        return self.norm(x)
 
 
 class TransformerEncoderLayer(nn.Module):
@@ -204,6 +143,5 @@ class VisionTransformer(nn.Module):
 
 if __name__ == '__main__':
     model = MultiHeadAttention(512, num_heads=8)
-    _ = Attention(512)
-    
+
     _ = FeedForward(512, 1024, 0.2) # for test
