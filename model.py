@@ -170,12 +170,29 @@ class ViT(nn.Module):
 
 
 class TransformerEncoderLayer(nn.Module):
-    def __init__(self):
+    def __init__(self, dim:int , mlp_dim: int, dim_qk: int = None, dim_v: int = None, num_heads: int = 1, dropout: float = 0.):
         super(TransformerEncoderLayer, self).__init__()
+        self.MultiHeadAttention = MultiHeadAttention(dim, dim_qk, dim_v, num_heads, dropout)
+        self.FeedForward = FeedForward(dim, mlp_dim, dropout)
+        self.layer_norm = nn.LayerNorm(dim)
+
+    def forward(self, x):
+        x, _ = self.MultiHeadAttention(x, x, x)
+        x = x + x
+        x = self.FeedForward(x) + x
+        return self.layer_norm(x)
 
 class TransformerEncoder(nn.Module):
-    def __init__(self):
+    def __init__(self, num_layers: int, dim: int, mlp_dim: int, dim_qk: int = None, dim_v: int = None, num_heads: int = 1, dropout: float = 0.):
         super(TransformerEncoder, self).__init__()
+        self.layers = nn.ModuleList([])
+        for _ in range(num_layers):
+            self.layers.append(TransformerEncoderLayer(dim, mlp_dim, dim_qk, dim_v, num_heads, dropout))
+
+    def forward(self, x):
+        for layer in self.layers:
+            x = layer(x)
+        return x
 
 class VisionTransformer(nn.Module):
     def __init__(self):
@@ -183,11 +200,15 @@ class VisionTransformer(nn.Module):
 
 
 if __name__ == '__main__':
-    model = MultiHeadAttention(512, num_heads=8)
+    # model = MultiHeadAttention(512, num_heads=8)
 
     # _ = FeedForward(512, 1024, 0.2) # for test
     # _ = Transformer(512, 6, 8, 64, 64, 1024, 0.2) # for test
-    
+
+    encoder = TransformerEncoder(6, 512, 2048, num_heads=8, dropout=0.2)    
+    x = torch.randn(1, 10, 512)
+    _ = encoder(x) # (1, 10, 512)
+
     v = ViT(
         image_size = 256,
         patch_size = 32,
