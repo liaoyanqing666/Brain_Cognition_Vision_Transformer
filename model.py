@@ -83,8 +83,18 @@ class MultiHeadAttention(nn.Module):
         return output, attn
 
 class FeedForward(nn.Module):
-    def __init__(self):
+    def __init__(self, dim, hidden_dim, dropout=0.):
         super(FeedForward, self).__init__()
+        self.net = nn.Sequential(
+            nn.LayerNorm(dim),
+            nn.Linear(dim, hidden_dim),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim, dim),
+            nn.Dropout(dropout)
+        )
+    def forward(self, x):
+        return self.net(x)
 
 class TransformerEncoderLayer(nn.Module):
     def __init__(self):
@@ -102,3 +112,5 @@ class VisionTransformer(nn.Module):
 
 if __name__ == '__main__':
     model = MultiHeadAttention(512, num_heads=8)
+
+    _ = FeedForward(512, 1024, 0.2) # for test
