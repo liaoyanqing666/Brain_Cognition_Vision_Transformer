@@ -170,29 +170,42 @@ class ViT(nn.Module):
 
 
 class TransformerEncoderLayer(nn.Module):
-    def __init__(self, dim:int , mlp_dim: int, dim_qk: int = None, dim_v: int = None, num_heads: int = 1, dropout: float = 0.):
+    def __init__(self, dim: int, mlp_dim: int, dim_qk: int = None, dim_v: int = None, num_heads: int = 1, dropout: float = 0., pre_norm: bool = False):
         super(TransformerEncoderLayer, self).__init__()
         self.MultiHeadAttention = MultiHeadAttention(dim, dim_qk, dim_v, num_heads, dropout)
         self.FeedForward = FeedForward(dim, mlp_dim, dropout)
-        self.layer_norm = nn.LayerNorm(dim)
+        self.layer_norm1 = nn.LayerNorm(dim)
+        self.layer_norm2 = nn.LayerNorm(dim)
+        self.pre_norm = pre_norm
 
     def forward(self, x):
-        x, _ = self.MultiHeadAttention(x, x, x)
-        x = x + x
-        x = self.FeedForward(x) + x
-        return self.layer_norm(x)
+        if self.pre_norm:
+            x_norm1 = self.layer_norm1(x)
+            x_attn, attn_score = self.MultiHeadAttention(x_norm1, x_norm1, x_norm1)
+            x = x + x_attn
+            x_norm2 = self.layer_norm2(x)
+            x = self.FeedForward(x_norm2) + x
+        else:
+            x_attn, attn_score = self.MultiHeadAttention(x, x, x)
+            x = x + x_attn
+            x = self.layer_norm1(x)
+            x = self.FeedForward(x) + x
+            x = self.layer_norm2(x)
+        return x, attn_score
 
 class TransformerEncoder(nn.Module):
-    def __init__(self, num_layers: int, dim: int, mlp_dim: int, dim_qk: int = None, dim_v: int = None, num_heads: int = 1, dropout: float = 0.):
+    def __init__(self, num_layers: int, dim: int, mlp_dim: int, dim_qk: int = None, dim_v: int = None, num_heads: int = 1, dropout: float = 0., pre_norm: bool = False):
         super(TransformerEncoder, self).__init__()
         self.layers = nn.ModuleList([])
         for _ in range(num_layers):
-            self.layers.append(TransformerEncoderLayer(dim, mlp_dim, dim_qk, dim_v, num_heads, dropout))
+            self.layers.append(TransformerEncoderLayer(dim, mlp_dim, dim_qk, dim_v, num_heads, dropout, pre_norm))
 
     def forward(self, x):
+        attn_scores = []
         for layer in self.layers:
-            x = layer(x)
-        return x
+            x, attn_score = layer(x)
+            attn_scores.append(attn_score)
+        return x, attn_scores
 
 class VisionTransformer(nn.Module):
     def __init__(self):
