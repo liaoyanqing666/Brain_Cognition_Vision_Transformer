@@ -5,40 +5,14 @@ from PIL import Image
 import os
 import pandas as pd
 
-class Sport10DataHandler:
-    def __init__(self, train_csv, val_csv, root_dir, batch_size=4, num_workers=4):
-        """
-        Initialize the data handler for Sport10 dataset.
-
-        Args:
-            train_csv (str): Path to the training CSV file.
-            val_csv (str): Path to the validation CSV file.
-            root_dir (str): Directory containing the images.
-            batch_size (int): Batch size for the dataloaders.
-            num_workers (int): Number of workers for the dataloaders.
-        """
-        self.train_csv = train_csv
-        self.val_csv = val_csv
-        self.root_dir = root_dir
-        self.batch_size = batch_size
-        self.num_workers = num_workers
-        self.transform = transforms.Compose([
-            transforms.Resize((256, 256)),
-            transforms.ToTensor(),
-        ])
-        self.train_dataset = self._create_dataset(train_csv, transform=self.transform)
-        self.val_dataset = self._create_dataset(val_csv, transform=self.transform)
-        self.train_loader = self._create_dataloader(self.train_dataset, shuffle=True)
-        self.val_loader = self._create_dataloader(self.val_dataset, shuffle=False)
-
-    def _create_dataset(self, csv_file, transform):
-        return Sport10Dataset(csv_file=csv_file, root_dir=self.root_dir, transform=transform)
-
-    def _create_dataloader(self, dataset, shuffle):
-        return DataLoader(dataset, batch_size=self.batch_size, shuffle=shuffle, num_workers=self.num_workers)
-
 class Sport10Dataset(Dataset):
     def __init__(self, csv_file, root_dir, transform=None):
+        """
+        Args:
+            csv_file (string): Path to the csv file with annotations.
+            root_dir (string): Directory with all the images.
+            transform (callable, optional): Optional transform to be applied on a sample.
+        """
         self.data_frame = pd.read_csv(csv_file)
         self.root_dir = root_dir
         self.transform = transform
@@ -56,11 +30,28 @@ class Sport10Dataset(Dataset):
 
         return image, image_class
 
-# Example usage
 if __name__ == "__main__":
-    train_csv = '/mnt/data/train_split.csv'
-    val_csv = '/mnt_data/val_split.csv'
-    root_dir = '/path/to/sport10'
-    data_handler = Sport10DataHandler(train_csv, val_csv, root_dir)
+    # Load the first few rows of the train_split.csv file
+    train_split_path = '/mnt/data/train_split.csv'
+    train_split_df = pd.read_csv(train_split_path)
 
-    # Use data_handler.train_loader and data_handler.val_loader as needed
+    # Load the first few rows of the val_split.csv file
+    val_split_path = '/mnt/data/val_split.csv'
+    val_split_df = pd.read_csv(val_split_path)
+
+    # Define transforms for the images
+    transform = transforms.Compose([
+        transforms.Resize((256, 256)),
+        transforms.ToTensor(),
+    ])
+
+    # Assuming the root directory for images is called 'sport10'
+    root_dir = '/path/to/sport10'
+
+    # Create dataset instances
+    train_dataset = Sport10Dataset(csv_file=train_split_path, root_dir=root_dir, transform=transform)
+    val_dataset = Sport10Dataset(csv_file=val_split_path, root_dir=root_dir, transform=transform)
+
+    # Create data loaders
+    train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True, num_workers=4)
+    val_loader = DataLoader(val_dataset, batch_size=4, shuffle=False, num_workers=4)
