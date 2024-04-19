@@ -128,7 +128,9 @@ class TransformerEncoderLayer(nn.Module):
         return x, attn_score
 
 class TransformerEncoder(nn.Module):
-    def __init__(self, num_layers: int, dim: int, mlp_dim: int, dim_qk: int = None, dim_v: int = None, num_heads: int = 1, dropout: float = 0., pre_norm: bool = False):
+    def __init__(self, num_layers: int, dim: int, mlp_dim: int, 
+                 dim_qk: int = None, dim_v: int = None, num_heads: int = 1,
+                   dropout: float = 0., pre_norm: bool = False):
         super(TransformerEncoder, self).__init__()
         self.layers = nn.ModuleList([])
         for _ in range(num_layers):
@@ -142,7 +144,10 @@ class TransformerEncoder(nn.Module):
         return x, attn_scores
 
 class VisionTransformer(nn.Module):
-    def __init__(self, *, image_size, patch_size, num_classes, dim, depth, heads, mlp_dim, pool = 'cls', channels = 3, dim_head = 64, dropout = 0., emb_dropout = 0.):
+    def __init__(self, *, image_size: int, patch_size: int, num_classes: int, 
+                 depth:int , dim: int, mlp_dim: int,
+                   pool = 'cls', channels:int = 3, dim_qk:int = None, dim_v:int = None, num_heads: int,
+                     dropout: float = 0., emb_dropout: float = 0., pre_norm: bool = False):
         super(VisionTransformer, self).__init__()
         image_height, image_width = pair(image_size)
         patch_height, patch_width = pair(patch_size)
@@ -164,7 +169,7 @@ class VisionTransformer(nn.Module):
         self.cls_token = nn.Parameter(torch.randn(1, 1, dim))
         self.dropout = nn.Dropout(emb_dropout)
 
-        self.encoder = TransformerEncoder(depth, dim, mlp_dim, dropout=dropout)
+        self.encoder = TransformerEncoder(depth, dim, mlp_dim, dim_qk, dim_v, num_heads, dropout = dropout, pre_norm = False)
 
         self.pool = pool
         self.to_latent = nn.Identity()
@@ -202,11 +207,11 @@ if __name__ == '__main__':
         image_size = 256,
         patch_size = 32,
         num_classes = 1000,
-        dim = 1024,
         depth = 6,
-        heads = 16,
-        dim_head = 1024,
+        dim = 1024,
+        num_heads = 16,
         mlp_dim = 2048,
+        dim_qk= 1024,
         dropout = 0.1,
         emb_dropout = 0.1
     )
