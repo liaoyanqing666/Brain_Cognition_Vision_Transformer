@@ -4,6 +4,7 @@ from torchvision import transforms
 from PIL import Image
 import os
 import pandas as pd
+import numpy as np
 
 class Sport10Dataset(Dataset):
     def __init__(self, csv_file, root_dir, transform=None):
